@@ -5,7 +5,7 @@ from glob import glob
 from ebooklib import epub
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-
+from PySide2 import QtWidgets
 import models
 
 dbstring = "postgres://adm_archiv:Dixf+483@localhost/ArchivEbook"
@@ -15,6 +15,18 @@ models.Base.metadata.bind = db
 DBSession = sessionmaker(bind=db)
 
 session = DBSession()
+
+
+class App(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+
+
+app = QtWidgets.QApplication([])
+win = App()
+win.show()
+app.exec_()
+
 
 # INITIALISATION
 CUR_FILE = __file__
