@@ -32,15 +32,39 @@ class App(QtWidgets.QWidget):
 
     def setup_ui(self):
         self.layout = QtWidgets.QGridLayout(self)
-        self.btn_ouvrir = QtWidgets.QPushButton('Sélectionner...')
+        self.btn_file_select = QtWidgets.QPushButton('Sélectionner (fichiers)...')
+        self.btn_dir_select = QtWidgets.QPushButton('Sélectionner (répertoire)...')
+        self.btn_execute = QtWidgets.QPushButton('Exécuter...')
         self.btn_reset = QtWidgets.QPushButton('Reset...')
         # prg_bar = QtWidgets.QProgressBar()
-        self.layout.addWidget(self.btn_ouvrir, 0, 0)
-        self.layout.addWidget(self.btn_reset, 0, 1)
+        self.layout.addWidget(self.btn_file_select, 0, 0)
+        self.layout.addWidget(self.btn_dir_select, 0, 1)
+        self.layout.addWidget(self.btn_execute, 0, 2)
+        self.layout.addWidget(self.btn_reset, 0, 3)
 
     def setup_connections(self):
-        self.btn_ouvrir.clicked.connect(Importer)
+        self.btn_execute.clicked.connect(Importer)
         self.btn_reset.clicked.connect(reset)
+        self.btn_file_select.clicked.connect(self.selection_livres)
+        self.btn_dir_select.clicked.connect(self.selection_rep)
+
+    def selection_livres(self):
+        selection = QtWidgets.QFileDialog.getOpenFileNames(self,
+                                                           self.tr("Ouvrir"), "/media/frederic/data",
+                                                           self.tr(
+                                                               "Ebook Files (*.epub *.moby *.pdf);; Archives Files (*.zip *.rar)"))[
+            0]
+        print(selection)
+        print(type(selection))
+        return
+
+    def selection_rep(self):
+        selection = QtWidgets.QFileDialog.getExistingDirectory(self, self.tr("Sélectionner le répertoire"),
+                                                               "/media/frederic/data",
+                                                               QtWidgets.QFileDialog.ShowDirsOnly)
+        print(selection)
+        print(type(selection))
+        return
 
 
 app = QtWidgets.QApplication([])
