@@ -18,9 +18,14 @@ session = DBSession()
 
 
 class Importer:
-    def __init__(self):
-        # self.fichier = fichier
-        liste_livre = glob(os.path.join(constants.PATH_DOSSIER, "**"), recursive=True)
+    def __init__(self, fichiers):
+        self.fichiers = fichiers
+
+    def liste_fichiers(self):
+        if os.path.isdir(self.fichiers):
+            liste_livre = glob(os.path.join(self.fichiers, "**"), recursive=True)
+        else:
+            liste_livre = self.fichiers
 
         # Tri des fichiers epub / non epub
         liste_livres_autre_format = []  # liste des non epubs
