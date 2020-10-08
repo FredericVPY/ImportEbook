@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 import constants
 import models
 
-dbstring = "postgres://adm_archiv:Dixf+483@localhost/ArchivEbook"
+dbstring = "postgres://adm_archiv:Dixf+483@172.17.0.2/ArchivEbook"
 db = create_engine(dbstring)
 models.Base.metadata.bind = db
 DBSession = sessionmaker(bind=db)

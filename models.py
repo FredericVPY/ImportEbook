@@ -1,12 +1,11 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
 
 class ImportTemp(Base):
-    __tablename__ = 'import_test'
+    __tablename__ = 'import_temp'
     """Classe du modèle d'un enregistrement d'import
 
     Args:
