@@ -42,7 +42,7 @@ class MainWidget(QWidget):
         self.btn_file_select = QPushButton('Sélectionner (fichiers)...')
         self.btn_dir_select = QPushButton('Sélectionner (répertoire)...')
         self.btn_execute = QPushButton('Exécuter...')
-        self.btn_reset = QPushButton('Reset...')
+        self.btn_reset = QPushButton('Reset...')  # pour test, remettre les fichiers à leur emplacement d'origine
         self.btn_elimine_doublons = QPushButton('Eliminer les doublons')
 
         # QWidget Layout
@@ -75,7 +75,7 @@ class MainWidget(QWidget):
                                                      "/media/frederic/data", QFileDialog.ShowDirsOnly)
         importage = Importer(selection)
         importage.liste_fichiers()
-        print(type(selection))
+        # print(type(selection))
         return
 
 

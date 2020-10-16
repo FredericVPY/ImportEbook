@@ -1,9 +1,14 @@
+'''
+Classe importer.py comporte tous les éléments pour importer un livre en base de données
+'''
+
 import os
 import shutil
 from glob import glob
 
 from ebooklib import epub
 from sqlalchemy import create_engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 import constants
@@ -44,6 +49,7 @@ class Importer:
                         shutil.move(livre, constants.PATH_NON_EPUB)
                     except:
                         print("erreur")
+
         # Traitement des epubs
         liste_livres_erreur = []
         for ebook in liste_livres_epub:
@@ -59,22 +65,29 @@ class Importer:
                 # book.get_metadata('DC','date'))
                 # print(book.get_metadata('DC','rights'), book.get_metadata('DC','coverage'),
                 # book.get_metadata('DC','type'))
+
                 # Ajout en base de données
                 if isbn[0][0].startswith('978') or isbn[0][0].startswith('979'):
                     newimport = models.ImportTemp(auteur=auteur[0][0], titre=titre[0][0], isbn=isbn[0][0])
-                    print(auteur[0][0], titre[0][0])
+                    # print(auteur[0][0], titre[0][0])
                 else:
                     newimport = models.ImportTemp(auteur=auteur[0][0], titre=titre[0][0], ebook_code=isbn[0][0])
                 try:
                     session.add(newimport)
                     session.commit()
-                except:
+                except IntegrityError as e:
+                    print(f"L'entrée existe déjà")
+                    # except InvalidRequestError as e:
+                    session.rollback()
                     liste_livre_deja_existants.append(ebook)
+                    # print(f"L'entrée {e} existe déjà")
                     try:
                         shutil.move(ebook, constants.PATH_DEJA_EXISTANTS)
                     except:
                         pass
-        print(session.query(models.ImportTemp.titre).all())
+                finally:
+                    session.close()
+        # print(session.query(models.ImportTemp.titre).all())
         # print(liste_livres_erreur)
         # print(liste_livres_autre_format)
 
