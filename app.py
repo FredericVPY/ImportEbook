@@ -19,10 +19,15 @@ os.makedirs(PATH_DOUBLONS, exist_ok=True)
 
 
 def reset():
+    """
+    Recopier les fichiers de test dans le répertoire d'origine
+    :return:
+    """
     files = os.listdir(PATH_DEJA_EXISTANTS)
     NEW_PATH = os.path.join(PATH_DOSSIER, "Collection Que Sais-je")
     for file in files:
         shutil.move(f"{PATH_DEJA_EXISTANTS}/{file}", NEW_PATH)
+    return
 
 
 class MainWidget(QWidget):
