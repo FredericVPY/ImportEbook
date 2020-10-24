@@ -7,7 +7,7 @@ from PySide2.QtWidgets import QGridLayout, QPushButton, QFileDialog, QApplicatio
 from ElimineDoublons import ElimineWindow, WidgetDoublons
 from constants import CONF_DIR, PATH_NON_EPUB, PATH_NON_TRAITES, PATH_TRAITES, PATH_DEJA_EXISTANTS, PATH_DOSSIER, \
     PATH_DOUBLONS
-from importer import Importer
+from importer import EbookImport, check_epub
 
 # INITIALISATION
 os.makedirs(CONF_DIR, exist_ok=True)
@@ -56,7 +56,7 @@ class MainWidget(QWidget):
         self.setLayout(self.layout)
 
     def setup_connections(self):
-        self.btn_execute.clicked.connect(Importer)
+        self.btn_execute.clicked.connect(EbookImport)
         self.btn_reset.clicked.connect(reset)
         self.btn_file_select.clicked.connect(self.selection_livres)
         self.btn_dir_select.clicked.connect(self.selection_rep)
@@ -68,13 +68,21 @@ class MainWidget(QWidget):
                                                  self.tr(
                                                      "Ebook Files (*.epub *.moby *.pdf);; Archives Files (*.zip *.rar)"))[
             0]
+
+        for ebook in selection:
+            ebook_import = EbookImport(ebook)
+            is_epub = check_epub(ebook)  # test si epub
+            if is_epub:
+                ebook_import.read_metadata(ebook)
+                ebook_import.ebook_insert(ebook)
+
         return
 
     def selection_rep(self):
         selection = QFileDialog.getExistingDirectory(self, self.tr("Sélectionner le répertoire"),
                                                      "/media/frederic/data", QFileDialog.ShowDirsOnly)
-        importage = Importer(selection)
-        importage.liste_fichiers()
+        folder_import = EbookImport(selection)
+        folder_import.files_list()
         # print(type(selection))
         return
 

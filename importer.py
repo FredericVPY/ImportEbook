@@ -22,11 +22,69 @@ DBSession = sessionmaker(bind=db)
 session = DBSession()
 
 
-class Importer:
+def check_epub(path):
+    ebook = os.path.realpath(path)
+    if ebook.endswith(".epub"):
+        return True
+    else:
+        shutil.move(ebook, constants.PATH_NON_EPUB)
+    return False
+
+
+class EbookImport:
+    titre = ''
+    auteur = ''
+    isbn = ''
+
     def __init__(self, path):
         self.path = path
 
-    def liste_fichiers(self):
+    def read_metadata(self, path):
+        try:
+            book = epub.read_epub(path)
+        except AttributeError:
+            print('erreur')
+        else:
+            self.titre = book.get_metadata('DC', 'title')
+            self.auteur = book.get_metadata('DC', 'creator')
+            self.isbn = book.get_metadata('DC', 'identifier')
+            # print(book.get_metadata('DC','language'), book.get_metadata('DC','format'),
+            # book.get_metadata('DC','date'))
+            # print(book.get_metadata('DC','rights'), book.get_metadata('DC','coverage'),
+            # book.get_metadata('DC','type'))
+
+    def ebook_insert(self, path):  # Ajout en base de données
+        if self.isbn[0][0].startswith('978') or self.isbn[0][0].startswith('979'):
+            new_import = models.ImportTemp(auteur=self.auteur[0][0], titre=self.titre[0][0], isbn=self.isbn[0][0])
+            # print(auteur[0][0], titre[0][0])
+        else:
+            new_import = models.ImportTemp(auteur=self.auteur[0][0], titre=self.titre[0][0], ebook_code=self.isbn[0][0])
+        try:
+            session.add(new_import)
+            session.commit()
+        except IntegrityError as e:
+            print(f"L'entrée existe déjà")
+            # except InvalidRequestError as e:
+            session.rollback()
+            # liste_livre_deja_existants.append(ebook)
+            # print(f"L'entrée {e} existe déjà")
+            try:
+                shutil.move(path, constants.PATH_DEJA_EXISTANTS)
+            except:
+                pass
+        finally:
+            session.close()
+        # print(session.query(models.ImportTemp.titre).all())
+        # print(liste_livres_erreur)
+        # print(liste_livres_autre_format)
+
+
+class FolderImport(EbookImport):
+    def __init__(self, path):
+        super().__init__(path)
+        self.path = path
+
+    def files_list(self):
         if os.path.isdir(self.path):
             liste_livre = glob(os.path.join(self.path, "**"), recursive=True)  # créer liste de fichiers dans le dossier
         else:
