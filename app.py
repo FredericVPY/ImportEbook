@@ -7,7 +7,7 @@ from PySide2.QtWidgets import QGridLayout, QPushButton, QFileDialog, QApplicatio
 from ElimineDoublons import ElimineWindow, WidgetDoublons
 from constants import CONF_DIR, PATH_NON_EPUB, PATH_NON_TRAITES, PATH_TRAITES, PATH_DEJA_EXISTANTS, PATH_DOSSIER, \
     PATH_DOUBLONS
-from importer import EbookImport, check_epub
+from importer import EbookImport, check_epub, files_list, FolderImport
 
 # INITIALISATION
 os.makedirs(CONF_DIR, exist_ok=True)
@@ -63,26 +63,29 @@ class MainWidget(QWidget):
         # self.btn_elimine_doublons.clicked.connect(self.elimine_doublons)
 
     def selection_livres(self):
+        """
+        Insertion d'un livre ou de plusieurs livres en base de données
+        :return:
+        """
         selection = QFileDialog.getOpenFileNames(self, self.tr("Sélectionner un ou des fichier(s)"),
                                                  "/media/frederic/data",
                                                  self.tr(
-                                                     "Ebook Files (*.epub *.moby *.pdf);; Archives Files (*.zip *.rar)"))[
-            0]
-
+                                                     "Ebook Files (*.epub *.moby *.pdf)"))[0]
+        # Traitement du ou des livres
         for ebook in selection:
-            ebook_import = EbookImport(ebook)
+            ebook_import = EbookImport(ebook)  # création d'une instance
             is_epub = check_epub(ebook)  # test si epub
             if is_epub:
-                ebook_import.read_metadata(ebook)
-                ebook_import.ebook_insert(ebook)
-
+                ebook_import.read_metadata(ebook)  # récupération des métadatas
+                ebook_import.ebook_insert(ebook)  # insertion en base
         return
 
     def selection_rep(self):
         selection = QFileDialog.getExistingDirectory(self, self.tr("Sélectionner le répertoire"),
                                                      "/media/frederic/data", QFileDialog.ShowDirsOnly)
-        folder_import = EbookImport(selection)
-        folder_import.files_list()
+        epub_list = files_list(selection)  # récupération d'une liste de epub
+        folder_import = FolderImport(selection, epub_list)  # création d'une instance
+        folder_import.ebook_bulk_insert(epub_list)
         # print(type(selection))
         return
 

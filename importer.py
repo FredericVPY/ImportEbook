@@ -1,6 +1,5 @@
-'''
-Classe importer.py comporte tous les éléments pour importer un livre en base de données
-'''
+""" Classe importer.py comporte tous les éléments pour importer un livre en base de données
+"""
 
 import os
 import shutil
@@ -10,6 +9,7 @@ from ebooklib import epub
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm.exc import UnmappedInstanceError
 
 import constants
 import models
@@ -23,23 +23,55 @@ session = DBSession()
 
 
 def check_epub(path):
-    ebook = os.path.realpath(path)
-    if ebook.endswith(".epub"):
-        return True
+    """
+    Fonction qui retourne True si c'est un epub, False si non epub
+    :param path: Chemin complet du livre à insérer
+    :return: True ou False
+    """
+    if os.path.isfile(path):
+        ebook = os.path.realpath(path)
+        if ebook.endswith(".epub"):
+            return True
+        else:
+            shutil.move(ebook, constants.PATH_NON_EPUB)
+        return False
     else:
-        shutil.move(ebook, constants.PATH_NON_EPUB)
-    return False
+        return False
+
+
+def files_list(path):
+    """
+    Fonction qui retourne une liste de fichiers à partir d'un path
+    :param path: Chemin complet du livre à insérer
+    :return: epub_list
+    """
+    epub_list = []
+    liste_livre = glob(os.path.join(path, "**"), recursive=True)  # créer liste de fichiers dans le dossier
+    for ebook in liste_livre:
+        is_epub = check_epub(ebook)  # test si epub
+        if is_epub:
+            epub_list.append(ebook)
+        else:
+            liste_livres_autre_format = []  # liste des non epubs
+    return epub_list
 
 
 class EbookImport:
-    titre = ''
-    auteur = ''
-    isbn = ''
+    epub_list_dict = []
 
     def __init__(self, path):
         self.path = path
+        self.titre = ''
+        self.auteur = ''
+        self.isbn = ''
 
     def read_metadata(self, path):
+        """
+        Fonction qui lit les metadatas (auteur, titre, isbn) d'un ebook
+        :param path: Chemin complet du livre à insérer
+        :return: none
+        """
+        epub_dict = {}
         try:
             book = epub.read_epub(path)
         except AttributeError:
@@ -52,102 +84,63 @@ class EbookImport:
             # book.get_metadata('DC','date'))
             # print(book.get_metadata('DC','rights'), book.get_metadata('DC','coverage'),
             # book.get_metadata('DC','type'))
+            epub_dict['titre'] = self.titre[0][0]
+            epub_dict['auteur'] = self.auteur[0][0]
+            epub_dict['isbn'] = self.isbn[0][0]
+            self.epub_list_dict.append(epub_dict)
 
-    def ebook_insert(self, path):  # Ajout en base de données
+    def ebook_insert(self, path):
+        """
+        Insertion d'un ebook en base de données
+        :param path: Chemin complet du livre à insérer
+        :return: none
+        """
+        new_import = ''
         if self.isbn[0][0].startswith('978') or self.isbn[0][0].startswith('979'):
-            new_import = models.ImportTemp(auteur=self.auteur[0][0], titre=self.titre[0][0], isbn=self.isbn[0][0])
-            # print(auteur[0][0], titre[0][0])
+            try:
+                new_import = models.ImportTemp(auteur=self.auteur[0][0], titre=self.titre[0][0], isbn=self.isbn[0][0])
+            except IndexError as e:
+                print(f'{e}')
         else:
-            new_import = models.ImportTemp(auteur=self.auteur[0][0], titre=self.titre[0][0], ebook_code=self.isbn[0][0])
+            try:
+                new_import = models.ImportTemp(auteur=self.auteur[0][0], titre=self.titre[0][0],
+                                               ebook_code=self.isbn[0][0])
+            except IndexError as e:
+                print(f'{e}')
+
         try:
             session.add(new_import)
             session.commit()
+        except UnmappedInstanceError as e:
+            shutil.move(path, constants.PATH_NON_TRAITES)
+            print(f'{e}')
         except IntegrityError as e:
             print(f"L'entrée existe déjà")
             # except InvalidRequestError as e:
             session.rollback()
             # liste_livre_deja_existants.append(ebook)
             # print(f"L'entrée {e} existe déjà")
-            try:
-                shutil.move(path, constants.PATH_DEJA_EXISTANTS)
-            except:
-                pass
+            shutil.move(path, constants.PATH_DEJA_EXISTANTS)
         finally:
             session.close()
-        # print(session.query(models.ImportTemp.titre).all())
-        # print(liste_livres_erreur)
-        # print(liste_livres_autre_format)
 
 
 class FolderImport(EbookImport):
-    def __init__(self, path):
+    def __init__(self, path, epub_list):
         super().__init__(path)
-        self.path = path
+        self.epub_list = epub_list
 
-    def files_list(self):
-        if os.path.isdir(self.path):
-            liste_livre = glob(os.path.join(self.path, "**"), recursive=True)  # créer liste de fichiers dans le dossier
-        else:
-            liste_livre = self.path
+    def ebook_bulk_insert(self, epub_list):
+        """
+        Fonction qui fait un insert multiple d'objets EbookImport
+        :param epub_list:
+        :return:
+        """
+        for ebook in epub_list:
+            ebook_to_insert = EbookImport(ebook)
+            ebook_to_insert.read_metadata(ebook)
 
-        # Tri des fichiers epub / non epub
-        liste_livres_autre_format = []  # liste des non epubs
-        liste_livres_epub = []  # liste des epubs
-        liste_livre_deja_existants = []
-        # nbr_livre = len(liste_livre)
-        # print(liste_livre)
-
-        for livre in liste_livre:
-            if livre.endswith(".epub"):
-                liste_livres_epub.append(livre)
-            else:
-                if os.path.isfile(livre):
-                    try:
-                        liste_livres_autre_format.append(livre)
-                        shutil.move(livre, constants.PATH_NON_EPUB)
-                    except:
-                        print("erreur")
-
-        # Traitement des epubs
-        liste_livres_erreur = []
-        for ebook in liste_livres_epub:
-            try:
-                book = epub.read_epub(ebook)
-            except AttributeError:
-                liste_livres_erreur.append(ebook)
-            else:
-                titre = book.get_metadata('DC', 'title')
-                auteur = book.get_metadata('DC', 'creator')
-                isbn = book.get_metadata('DC', 'identifier')
-                # print(book.get_metadata('DC','language'), book.get_metadata('DC','format'),
-                # book.get_metadata('DC','date'))
-                # print(book.get_metadata('DC','rights'), book.get_metadata('DC','coverage'),
-                # book.get_metadata('DC','type'))
-
-                # Ajout en base de données
-                if isbn[0][0].startswith('978') or isbn[0][0].startswith('979'):
-                    newimport = models.ImportTemp(auteur=auteur[0][0], titre=titre[0][0], isbn=isbn[0][0])
-                    # print(auteur[0][0], titre[0][0])
-                else:
-                    newimport = models.ImportTemp(auteur=auteur[0][0], titre=titre[0][0], ebook_code=isbn[0][0])
-                try:
-                    session.add(newimport)
-                    session.commit()
-                except IntegrityError as e:
-                    print(f"L'entrée existe déjà")
-                    # except InvalidRequestError as e:
-                    session.rollback()
-                    liste_livre_deja_existants.append(ebook)
-                    # print(f"L'entrée {e} existe déjà")
-                    try:
-                        shutil.move(ebook, constants.PATH_DEJA_EXISTANTS)
-                    except:
-                        pass
-                finally:
-                    session.close()
-        # print(session.query(models.ImportTemp.titre).all())
-        # print(liste_livres_erreur)
-        # print(liste_livres_autre_format)
+        session.bulk_insert_mappings(models.ImportTemp, self.epub_list_dict)
 
 
 if __name__ == "__main__":
